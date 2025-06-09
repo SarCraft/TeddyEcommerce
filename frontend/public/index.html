@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Peluches Orinoco</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: auto; }
+    .teddies { display: flex; flex-wrap: wrap; gap: 20px; }
+    .teddy { border: 1px solid #ccc; padding: 10px; width: 200px; }
+    .teddy img { width: 100%; }
+    #cart { background: #f8f8f8; padding: 10px; margin-bottom: 20px; }
+    #detail { margin-bottom: 20px; }
+    button { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Peluches Orinoco</h1>
+  <div id="cart"></div>
+  <div id="detail"></div>
+  <div class="teddies" id="teddies"></div>
+
+  <script>
+    const apiUrl = 'http://localhost:3000/api/teddies';
+    let cart = [];
+
+    function updateCart() {
+      const cartDiv = document.getElementById('cart');
+      if (cart.length === 0) {
+        cartDiv.innerHTML = 'Panier vide.';
+        return;
+      }
+      let html = '<b>Panier</b><ul>';
+      cart.forEach((teddy, i) => {
+        html += `<li>${teddy.name} - ${(teddy.price/100).toFixed(2)} € <button onclick="removeFromCart(${i})">Retirer</button></li>`;
+      });
+      html += '</ul>';
+      html += `<b>Total : ${(cart.reduce((sum, t) => sum + t.price, 0)/100).toFixed(2)} €</b><br>`;
+      html += `<button onclick="orderCart()">Commander</button>`;
+      cartDiv.innerHTML = html;
+    }
+
+    function removeFromCart(index) {
+      cart.splice(index, 1);
+      updateCart();
+    }
+
+    function addToCart(teddy) {
+      cart.push(teddy);
+      updateCart();
+    }
+
+    function showDetail(teddy) {
+      const detailDiv = document.getElementById('detail');
+      detailDiv.innerHTML = `
+        <button onclick="hideDetail()">Retour</button>
+        <h2>${teddy.name}</h2>
+        <img src="${teddy.imageUrl}" alt="${teddy.name}" style="width:300px">
+        <p>${teddy.description}</p>
+        <p>Couleurs : ${teddy.colors.join(', ')}</p>
+        <p>Prix : ${(teddy.price/100).toFixed(2)} €</p>
+        <button onclick='addToCart(${JSON.stringify(teddy)})'>Ajouter au panier</button>
+      `;
+      document.getElementById('teddies').style.display = 'none';
+    }
+
+    function hideDetail() {
+      document.getElementById('detail').innerHTML = '';
+      document.getElementById('teddies').style.display = 'flex';
+    }
+
+    function orderCart() {
+      if (cart.length === 0) return;
+      const contact = {
+        firstName: "Jean",
+        lastName: "Dupont",
+        address: "1 rue de Paris",
+        city: "Paris",
+        email: "jean@dupont.fr"
+      };
+      const products = cart.map(t => t._id);
+      fetch(apiUrl + '/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contact, products })
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert('Commande envoyée ! Merci.');
+        cart = [];
+        updateCart();
+      });
+    }
+
+    function displayTeddies(teddies) {
+      const teddiesDiv = document.getElementById('teddies');
+      teddiesDiv.innerHTML = '';
+      teddies.forEach(teddy => {
+        const div = document.createElement('div');
+        div.className = 'teddy';
+        div.innerHTML = `
+          <img src="${teddy.imageUrl}" alt="${teddy.name}">
+          <h3>${teddy.name}</h3>
+          <p>${(teddy.price/100).toFixed(2)} €</p>
+          <button onclick='showTeddyDetail("${teddy._id}")'>Voir</button>
+          <button onclick='addToCart(${JSON.stringify(teddy)})'>Ajouter au panier</button>
+        `;
+        teddiesDiv.appendChild(div);
+      });
+    }
+
+    function showTeddyDetail(id) {
+      fetch(apiUrl + '/' + id)
+        .then(res => res.json())
+        .then(showDetail);
+    }
+
+    // Pour pouvoir utiliser addToCart/showTeddyDetail dans le HTML inline
+    window.addToCart = addToCart;
+    window.showTeddyDetail = showTeddyDetail;
+    window.removeFromCart = removeFromCart;
+    window.hideDetail = hideDetail;
+
+    // Initialisation
+    fetch(apiUrl)
+      .then(res => res.json())
+      .then(displayTeddies);
+
+    updateCart();
+  </script>
+</body>
+</html>
